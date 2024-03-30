@@ -466,7 +466,7 @@ EmptyStatement
   }
 
 ExpressionStatement
-  = !("{" / FunctionToken / FunctionAliasToken) expression: (LabeledCommaDecimal / Expression) EOS {
+  = !("{" / FunctionToken / FunctionAliasToken) expression: (LabeledCommaDecimal / CommaDecimal / Expression) EOS {
     return {
       type: 'ExpressionStatement',
       expression,
@@ -625,7 +625,7 @@ ExponentiationOperator
   = $('^/' / '^' / '/_' / '/^')
 
 ExponentiationExpression
-  = head: LabeledExpression tail: (__ @'~'? @ExponentiationOperator !(FJS / AbsoluteFJS) @'~'? _ @ExponentiationExpression)* {
+  = head: (LabeledExpression / UnaryExpression) tail: (__ @'~'? @ExponentiationOperator !(FJS / AbsoluteFJS) @'~'? _ @ExponentiationExpression)* {
       return tail.reduce(operatorReducer, head);
     }
 
@@ -633,7 +633,7 @@ Labels
   = (CallExpression / TrueArrayAccess / Identifier / ColorLiteral / StringLiteral / NoneLiteral)|.., __|
 
 LabeledExpression
-  = object: UnaryExpression __ labels: Labels __ {
+  = object: UnaryExpression ' ' __ labels: Labels __ {
     if (labels.length) {
       return {
         type: 'LabeledExpression',
@@ -645,7 +645,7 @@ LabeledExpression
   }
 
 LabeledCommaDecimal
-  = __ object: CommaDecimal __ labels: Labels __ {
+  = __ object: CommaDecimal ' ' __ labels: Labels __ {
     if (labels.length) {
       return {
         type: 'LabeledExpression',
@@ -759,9 +759,12 @@ ArraySlice
   }
 
 ScalarMultiple
-  = scalar: ScalarLike operator: ' '? quantity: (__ @(Unit / Quantity))? {
+  = scalar: ScalarLike operator: ' ' quantity: (__ @(Unit / Quantity)) {
+    return BinaryExpression(operator, scalar, quantity, false, false);
+  }
+  / scalar: ScalarLike quantity: (__ @(Unit / Quantity))? {
     if (quantity) {
-      return BinaryExpression(operator ?? ' ', scalar, quantity, false, false);
+      return BinaryExpression(' ', scalar, quantity, false, false);
     }
     if (scalar.type === 'DecimalLiteral') {
       if (scalar.exponent || scalar.flavor) {
